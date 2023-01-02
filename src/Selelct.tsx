@@ -3,31 +3,52 @@ import styles from './Select.module.css'
 
 type SelectProps = {
     options:SelectOption[]
-    onChange:(value:SelectOption|undefined) => void
-    value?: SelectOption
+} & (SingleSelectProps | MultipleSelectProps)
+
+type MultipleSelectProps={
+    multiple:true
+    value:SelectOption[]
+    onChange:(value:SelectOption[])=>void
 }
 
-type SelectOption={
+type SingleSelectProps={
+    multiple?:false
+    value?:SelectOption
+    onChange:(value:SelectOption | undefined)=>void
+}
+
+export type SelectOption={
     label:string
     value:string | number
 }
 
-export function Select({value,onChange, options}: SelectProps){
+export function Select({multiple,value,onChange, options}: SelectProps){
     const [isOpen, setIsOpen]=useState(false)
     const[highLightedIndex,setHighLightedIndex]=useState(0)
 
 
     function clearOptions(){
-        onChange(undefined)
+        multiple ? onChange([]): onChange(undefined)
     }
 
     function selectOption(option:SelectOption){
-        if(option===value) onChange(option)
+        if(multiple){
+            if(value.includes(option)){
+                onChange(value.filter(o => o !== option))
+            }else{
+                onChange([...value, option])
+            }
+        }
+        else{
+            if(option !== value) onChange(option)
+        }
+        
     }
 
     function isOptionSelected(option:SelectOption){
-        return option === value
+        return multiple? value.includes(option) : option === value;
     }
+
     useEffect(()=>{
         if(isOpen) setHighLightedIndex(0)
     },[isOpen])
@@ -37,7 +58,19 @@ export function Select({value,onChange, options}: SelectProps){
         onClick={()=>setIsOpen(prev=>!prev)}
         tabIndex={0} className={styles.container}>
             <span className={styles.value}>
-                {value?.label}
+                {multiple?value.map(v=>(
+                    <button 
+                    key={v.value} 
+                    onClick={e=>{
+                        e.stopPropagation()
+                        selectOption(v)
+                    }}
+                    className={styles['option-badge']}
+                    >
+                        {v.label}
+                        <span className={styles['remove-btn']}>&times;</span>
+                    </button>
+                )):value?.label}
             </span>
             <button 
             onClick={e=>{
@@ -52,7 +85,7 @@ export function Select({value,onChange, options}: SelectProps){
             <ul className={`${styles.options} ${isOpen?styles.show:''}`}>
                 {
                     options.map((option,index)=>(
-                      <li 
+                      <li
                       onMouseEnter={()=>setHighLightedIndex(index)}
                         key={option.value}
                         onClick={e=>{
@@ -61,7 +94,6 @@ export function Select({value,onChange, options}: SelectProps){
                             setIsOpen(false)
                         }}
                         className={`${styles.option} ${isOptionSelected(option)? styles.selected:''} ${index===highLightedIndex? styles.highlighted:''}`}>{option.label}
-                        
                         </li>
 
                     ))
